@@ -1,0 +1,9 @@
+{
+  "buckets": {
+    "name-of-bucket": {
+      "host"   : "",
+      "bucket" : "",
+      "secret" : ""
+    }
+  }
+}
