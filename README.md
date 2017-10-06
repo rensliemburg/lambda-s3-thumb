@@ -10,3 +10,4 @@ depending on which environment the zip file is being uploaded for.
 Create in IAM a role for lambda function with policy AWSLambdaExecute providing
 Put, get access to S3 bucket and access to CloudWatch Logs.
 
+Source: https://github.com/trinketapp/aws-lambda-create-thumbnail
