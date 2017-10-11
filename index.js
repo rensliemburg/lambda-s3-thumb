@@ -29,11 +29,10 @@ exports.handler = function(event, context) {
   // if [parentId]/fileId-name then uploaded image
 
   let pSrcKey = srcKey.substring(0, srcKey.lastIndexOf('/')+1);
-  console.log('Substring of src key=', pSrcKey);
 
   // prevent recursion i.e. saving thumb might trigger another event add infinitum
   if(pSrcKey.indexOf('/thumbs/') > 0 || pSrcKey.indexOf('thumbs') > 0) { // check if thumb
-    console.log('Image is a thumbnail. Exit.');
+    console.log('Image is already a thumbnail.');
     return;
   }
 
@@ -41,13 +40,9 @@ exports.handler = function(event, context) {
 
   let a = srcKey.split('/');
   let parentId = a[0]; // parentId
-  console.log('parentId:', parentId);
   let fileIdName = encodeURIComponent(a[1]); // fileId-name
-  console.log('fileIdName:',fileIdName);
-
-  var dstKey    = parentId + '/thumbs/' + fileIdName;
-  console.log('dstKey:', dstKey);
-
+  let dstKey    = parentId + '/thumbs/' + fileIdName;
+  let file = {'name': fileIdName};
 
   // Infer the image type.
   var typeMatch = srcKey.match(/\.([^.]*)$/);
@@ -90,13 +85,23 @@ exports.handler = function(event, context) {
             if (err) {
               next(err);
             } else {
+
+                // get the filesize of the thumb
+                gm(buffer).filesize(function (err, filesize) {
+                    file.size = parseInt(filesize, 10);
+                });
+
               next(null, response.ContentType, buffer);
             }
           });
       });
     },
+      // here get size function
     function upload(contentType, data, next) {
       // Stream the transformed image to a different S3 bucket.
+      file.contentType = contentType;
+      file.size = 0;
+
       s3.putObject({
         Bucket      : dstBucket,
         Key         : dstKey,
@@ -118,6 +123,8 @@ exports.handler = function(event, context) {
           ' and uploaded to ' + dstBucket + '/' + dstKey
         );
 
+        console.log('FILE: ', file);
+
         // hash-fileId.ext
         var fileMatch = srcKey.match(/\-([^.]*)\./);
 
@@ -130,10 +137,15 @@ exports.handler = function(event, context) {
 
           // Change url so it points to api okcomply
           // method should add thumb information to copies array in file document
-          request.post(bucketConfig.host + '/api/files/' + fileId + '/thumbnail', {
+
+          request.post(bucketConfig.host + '/api/filecopy/add', {
             form : {
               bucket : bucketConfig.bucket,
-              secret : bucketConfig.secret
+              secret : bucketConfig.secret,
+              fileId: fileId,
+              file: file,
+              key: dstKey
+
             }
           }, function(err, response, body) {
             err && console.log('could not make request back: ' + err);
